@@ -44,4 +44,9 @@ public class OrderService{
 
         throw new GiftCodeGenerationException(MAX_CODE_ATTEMPTS);
     }
+
+    public Order getById(UUID id) {
+        return orderRepository.findById(id)
+            .orElseThrow(() -> new OrderNotFoundException(id));
+    }
 }
