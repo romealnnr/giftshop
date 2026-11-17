@@ -1,37 +1,40 @@
 package com.giftshop.backend.order;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
-
 @Repository
-public  class OrderRepository {
+public class OrderRepository {
 
-    // ConcurrentHashMap allows for thread-safe concurrent access when multiple HTTP requests arrive simultaneously.
-    private final Map<UUID, Order> ordersById = new ConcurrentHashMap<>();
-    private final Map<String, UUID> orderIdsByCode = new ConcurrentHashMap<>();
+    private final OrderJpaRepository jpaRepository;
+
+    public OrderRepository(OrderJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
+    }
 
     /**
      * Saves the order only if its gift code is not already used.
+     * Uniqueness is enforced by the database UNIQUE constraint.
      *
-     * return true if saved, false if the code already exists
+     * @return true if saved, false if the code already exists
      */
-    public  boolean saveIfCodeIsUnique(Order order){
-        UUID existingOrderId = orderIdsByCode.putIfAbsent(order.code(), order.id());
-        
-        if (existingOrderId != null) {
-            return false;
+    public boolean saveIfCodeIsUnique(Order order) {
+        try {
+            jpaRepository.saveAndFlush(OrderEntity.from(order));
+            return true;
+        } catch (DataIntegrityViolationException e) {
+            if (jpaRepository.existsByCode(order.code())) {
+                return false;
+            }
+            throw e;
         }
-        ordersById.put(order.id(), order);
-        return true;
     }
 
-    public Optional<Order> findById(UUID id){
-        return Optional.ofNullable((ordersById.get(id)));
+    public Optional<Order> findById(UUID id) {
+        return jpaRepository.findById(id)
+            .map(OrderEntity::toOrder);
     }
-
 }
