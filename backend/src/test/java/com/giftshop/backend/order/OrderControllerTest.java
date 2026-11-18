@@ -20,8 +20,11 @@ import com.giftshop.backend.giftcard.GiftCardNotFoundException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.context.annotation.Import;
+import com.giftshop.backend.security.SecurityConfig;
 
 @WebMvcTest(OrderController.class)
+@Import(SecurityConfig.class)
 class OrderControllerTest {
 
     @Autowired
