@@ -1,0 +1,9 @@
+package com.giftshop.backend.security;
+
+public record AccessToken(String value, long expiresInSeconds) {
+
+    @Override
+    public String toString() {
+        return "AccessToken[value=***, expiresInSeconds=" + expiresInSeconds + "]";
+    }
+}

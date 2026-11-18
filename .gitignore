@@ -1,2 +1,5 @@
 # Secrets
 .env
+
+# Private keys
+secrets/
