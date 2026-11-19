@@ -1,6 +1,5 @@
 package com.giftshop.backend.auth;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.giftshop.backend.security.AccessToken;
 import com.giftshop.backend.security.SecurityConfig;
 import com.giftshop.backend.user.EmailAlreadyExistsException;
 import com.giftshop.backend.user.InvalidPasswordException;
@@ -37,9 +37,14 @@ class AuthControllerTest {
     @MockitoBean
     private UserService userService;
 
+    @MockitoBean
+    private AuthenticationService authenticationService;
+
     private static final String VALID_BODY = """
         {"email": "alice@example.com", "password": "correct-horse-battery"}
         """;
+
+    // ---------- register ----------
 
     @Test
     void register_returns201WithUser_withoutPassword() throws Exception {
@@ -54,6 +59,19 @@ class AuthControllerTest {
             .andExpect(jsonPath("$.role").value("USER"))
             .andExpect(jsonPath("$.password").doesNotExist())
             .andExpect(jsonPath("$.passwordHash").doesNotExist());
+    }
+
+    @Test
+    void register_acceptsEmailWithSurroundingSpaces() throws Exception {
+        User user = new User(UUID.randomUUID(), "alice@example.com", Role.USER, true, Instant.now());
+        when(userService.register("alice@example.com", "correct-horse-battery")).thenReturn(user);
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email": "  alice@example.com ", "password": "correct-horse-battery"}
+                    """))
+            .andExpect(status().isCreated());
     }
 
     @Test
@@ -102,16 +120,43 @@ class AuthControllerTest {
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void register_acceptsEmailWithSurroundingSpaces() throws Exception {
-        User user = new User(UUID.randomUUID(), "alice@example.com", Role.USER, true, Instant.now());
-        when(userService.register("alice@example.com", "correct-horse-battery")).thenReturn(user);
+    // ---------- login ----------
 
-        mockMvc.perform(post("/api/auth/register")
+    @Test
+    void login_returns200WithBearerToken() throws Exception {
+        when(authenticationService.login("alice@example.com", "correct-horse-battery"))
+            .thenReturn(new AccessToken("signed-token", 900));
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").value("signed-token"))
+            .andExpect(jsonPath("$.tokenType").value("Bearer"))
+            .andExpect(jsonPath("$.expiresIn").value(900));
+    }
+
+    @Test
+    void login_returns401_whenCredentialsAreInvalid() throws Exception {
+        when(authenticationService.login(anyString(), anyString()))
+            .thenThrow(new InvalidCredentialsException());
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.detail").value("Invalid email or password"));
+    }
+
+    @Test
+    void login_returns400_whenPasswordIsMissing() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"email": "  alice@example.com ", "password": "correct-horse-battery"}
+                    {"email": "alice@example.com"}
                     """))
-            .andExpect(status().isCreated());
+            .andExpect(status().isBadRequest());
+
+        verify(authenticationService, never()).login(anyString(), anyString());
     }
 }

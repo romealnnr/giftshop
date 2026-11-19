@@ -13,6 +13,8 @@ import com.giftshop.backend.order.GiftCodeGenerationException;
 import com.giftshop.backend.order.OrderNotFoundException;
 import com.giftshop.backend.user.EmailAlreadyExistsException;
 import com.giftshop.backend.user.InvalidPasswordException;
+import com.giftshop.backend.auth.AccountDisabledException;
+import com.giftshop.backend.auth.InvalidCredentialsException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -53,5 +55,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InvalidPasswordException.class)
     public ProblemDetail handleInvalidPassword(InvalidPasswordException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(AccountDisabledException.class)
+    public ProblemDetail handleAccountDisabled(AccountDisabledException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 }
