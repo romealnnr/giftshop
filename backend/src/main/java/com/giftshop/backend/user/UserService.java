@@ -46,6 +46,11 @@ public class UserService {
         return user;
     }
 
+    public User getById(UUID id) {
+        return userRepository.findById(id)
+            .orElseThrow(UserNotFoundException::new);
+    }
+
     public static String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
     }
