@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record Order(
     UUID id,
+    UUID userId,
     Long giftCardId,
     String giftCardName,
     BigDecimal amount,

@@ -13,6 +13,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import com.giftshop.backend.TestcontainersConfiguration;
+import com.giftshop.backend.user.Role;
+import com.giftshop.backend.user.User;
+import com.giftshop.backend.user.UserRepository;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -24,44 +27,77 @@ class OrderRepositoryTest {
     @Autowired
     private OrderJpaRepository jpaRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    private UUID alice;
+    private UUID bob;
+
     @BeforeEach
-    void cleanDatabase() {
+    void setUp() {
         jpaRepository.deleteAll();
+        alice = newUser();
+        bob = newUser();
     }
 
-    private Order orderWithCode(String code) {
-        return new Order(UUID.randomUUID(), 1L, "Carte Cinéma",
-            new BigDecimal("25.00"), code, Instant.now());
+    /** Orders reference users (foreign key): the buyer must exist in the database. */
+    private UUID newUser() {
+        User user = new User(UUID.randomUUID(), "user-" + UUID.randomUUID() + "@example.com",
+            Role.USER, true, Instant.now());
+        userRepository.save(user, "fake-hash-for-tests");
+        return user.id();
+    }
+
+    private Order orderFor(UUID userId, String code, Instant createdAt) {
+        return new Order(UUID.randomUUID(), userId, 1L, "Carte Cinéma",
+            new BigDecimal("25.00"), code, createdAt);
     }
 
     @Test
-    void saveIfCodeIsUnique_savesOrder_whenCodeIsNew() {
-        Order order = orderWithCode("GIFT-AAAA-BBBB-CCCC");
+    void saveIfCodeIsUnique_savesOrder_andItsOwnerCanFindIt() {
+        Order order = orderFor(alice, "GIFT-AAAA-BBBB-CCCC", Instant.now());
 
         boolean saved = repository.saveIfCodeIsUnique(order);
 
         assertThat(saved).isTrue();
-        assertThat(repository.findById(order.id()))
+        assertThat(repository.findByIdForUser(order.id(), alice))
             .hasValueSatisfying(found -> {
                 assertThat(found.code()).isEqualTo("GIFT-AAAA-BBBB-CCCC");
+                assertThat(found.userId()).isEqualTo(alice);
                 assertThat(found.amount()).isEqualByComparingTo("25.00");
             });
     }
 
     @Test
     void saveIfCodeIsUnique_rejectsOrder_whenCodeAlreadyExists() {
-        Order first = orderWithCode("GIFT-AAAA-BBBB-CCCC");
-        Order duplicate = orderWithCode("GIFT-AAAA-BBBB-CCCC");
-        repository.saveIfCodeIsUnique(first);
+        repository.saveIfCodeIsUnique(orderFor(alice, "GIFT-AAAA-BBBB-CCCC", Instant.now()));
+        Order duplicate = orderFor(bob, "GIFT-AAAA-BBBB-CCCC", Instant.now());
 
         boolean saved = repository.saveIfCodeIsUnique(duplicate);
 
         assertThat(saved).isFalse();
-        assertThat(repository.findById(duplicate.id())).isEmpty();
+        assertThat(repository.findByIdForUser(duplicate.id(), bob)).isEmpty();
     }
 
     @Test
-    void findById_returnsEmpty_whenOrderDoesNotExist() {
-        assertThat(repository.findById(UUID.randomUUID())).isEmpty();
+    void findByIdForUser_returnsEmpty_forAnotherUser() {
+        Order alicesOrder = orderFor(alice, "GIFT-AAAA-BBBB-CCCC", Instant.now());
+        repository.saveIfCodeIsUnique(alicesOrder);
+
+        assertThat(repository.findByIdForUser(alicesOrder.id(), bob)).isEmpty();
+    }
+
+    @Test
+    void findAllForUser_returnsOnlyTheUsersOrders_newestFirst() {
+        repository.saveIfCodeIsUnique(
+            orderFor(alice, "GIFT-OLDE-OLDE-OLDE", Instant.parse("2026-01-01T10:00:00Z")));
+        repository.saveIfCodeIsUnique(
+            orderFor(alice, "GIFT-NEWE-NEWE-NEWE", Instant.parse("2026-01-02T10:00:00Z")));
+        repository.saveIfCodeIsUnique(
+            orderFor(bob, "GIFT-BOBB-BOBB-BOBB", Instant.now()));
+
+        assertThat(repository.findAllForUser(alice))
+            .extracting(Order::code)
+            .containsExactly("GIFT-NEWE-NEWE-NEWE", "GIFT-OLDE-OLDE-OLDE");
     }
 }
