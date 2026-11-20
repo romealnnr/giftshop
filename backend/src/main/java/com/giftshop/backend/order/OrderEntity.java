@@ -16,6 +16,9 @@ class OrderEntity {
     @Id
     private UUID id;
 
+    @Column(name = "user_id")
+    private UUID userId;
+
     @Column(name = "gift_card_id", nullable = false)
     private Long giftCardId;
 
@@ -38,6 +41,7 @@ class OrderEntity {
     static OrderEntity from(Order order) {
         OrderEntity entity = new OrderEntity();
         entity.id = order.id();
+        entity.userId = order.userId();
         entity.giftCardId = order.giftCardId();
         entity.giftCardName = order.giftCardName();
         entity.amount = order.amount();
@@ -47,6 +51,6 @@ class OrderEntity {
     }
 
     Order toOrder() {
-        return new Order(id, giftCardId, giftCardName, amount, code, createdAt);
+        return new Order(id, userId, giftCardId, giftCardName, amount, code, createdAt);
     }
 }

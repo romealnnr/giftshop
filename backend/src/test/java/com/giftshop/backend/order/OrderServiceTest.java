@@ -9,6 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,18 +37,21 @@ class OrderServiceTest {
     @InjectMocks
     private OrderService orderService;
 
+    private final UUID buyerId = UUID.randomUUID();
+
     private final GiftCard bookstore =
         new GiftCard(2L, "Carte Librairie", "Culture", new BigDecimal("30.00"));
 
     @Test
-    void create_returnsOrderWithGiftCardDetailsAndCode() {
+    void create_returnsOrderForTheBuyer() {
         when(giftCardService.getById(2L)).thenReturn(bookstore);
         when(codeGenerator.generate()).thenReturn("GIFT-AAAA-BBBB-CCCC");
         when(orderRepository.saveIfCodeIsUnique(any())).thenReturn(true);
 
-        Order order = orderService.create(2L);
+        Order order = orderService.create(2L, buyerId);
 
         assertThat(order.id()).isNotNull();
+        assertThat(order.userId()).isEqualTo(buyerId);
         assertThat(order.giftCardId()).isEqualTo(2L);
         assertThat(order.giftCardName()).isEqualTo("Carte Librairie");
         assertThat(order.amount()).isEqualByComparingTo("30.00");
@@ -60,7 +65,7 @@ class OrderServiceTest {
         when(codeGenerator.generate()).thenReturn("GIFT-AAAA-AAAA-AAAA", "GIFT-BBBB-BBBB-BBBB");
         when(orderRepository.saveIfCodeIsUnique(any())).thenReturn(false, true);
 
-        Order order = orderService.create(2L);
+        Order order = orderService.create(2L, buyerId);
 
         assertThat(order.code()).isEqualTo("GIFT-BBBB-BBBB-BBBB");
         verify(codeGenerator, times(2)).generate();
@@ -72,7 +77,7 @@ class OrderServiceTest {
         when(codeGenerator.generate()).thenReturn("GIFT-AAAA-AAAA-AAAA");
         when(orderRepository.saveIfCodeIsUnique(any())).thenReturn(false);
 
-        assertThatThrownBy(() -> orderService.create(2L))
+        assertThatThrownBy(() -> orderService.create(2L, buyerId))
             .isInstanceOf(GiftCodeGenerationException.class);
 
         verify(orderRepository, times(OrderService.MAX_CODE_ATTEMPTS)).saveIfCodeIsUnique(any());
@@ -82,9 +87,18 @@ class OrderServiceTest {
     void create_doesNotSaveOrder_whenGiftCardDoesNotExist() {
         when(giftCardService.getById(99L)).thenThrow(new GiftCardNotFoundException(99L));
 
-        assertThatThrownBy(() -> orderService.create(99L))
+        assertThatThrownBy(() -> orderService.create(99L, buyerId))
             .isInstanceOf(GiftCardNotFoundException.class);
 
         verify(orderRepository, never()).saveIfCodeIsUnique(any());
+    }
+
+    @Test
+    void getById_throwsNotFound_whenOrderIsNotTheUsers() {
+        UUID orderId = UUID.randomUUID();
+        when(orderRepository.findByIdForUser(orderId, buyerId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.getById(orderId, buyerId))
+            .isInstanceOf(OrderNotFoundException.class);
     }
 }

@@ -1,0 +1,77 @@
+# Local requests for the Giftshop API (VS Code extension: REST Client).
+# Test accounts only: never put real credentials in this file.
+
+@baseUrl = http://localhost:8080
+
+### Catalog (public)
+GET {{baseUrl}}/api/giftcards
+
+### Register
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "correct-horse-battery"
+}
+
+### Log in
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "correct-horse-battery"
+}
+
+### My profile
+GET {{baseUrl}}/api/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Buy a gift card
+# @name createOrder
+POST {{baseUrl}}/api/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "giftCardId": 2
+}
+
+### Read the order just created
+GET {{baseUrl}}/api/orders/{{createOrder.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### My orders
+GET {{baseUrl}}/api/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+# ---------- Second user: access control checks ----------
+
+### Register Bob
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "bob@example.com",
+  "password": "another-long-password"
+}
+
+### Log in as Bob
+# @name loginBob
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "bob@example.com",
+  "password": "another-long-password"
+}
+
+### Bob tries to read Alice's order (expected: 404)
+GET {{baseUrl}}/api/orders/{{createOrder.response.body.$.id}}
+Authorization: Bearer {{loginBob.response.body.$.accessToken}}
+
+### Bob's orders (expected: empty list)
+GET {{baseUrl}}/api/orders
+Authorization: Bearer {{loginBob.response.body.$.accessToken}}

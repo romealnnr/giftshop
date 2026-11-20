@@ -1,6 +1,7 @@
 package com.giftshop.backend.order;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -9,7 +10,7 @@ import com.giftshop.backend.giftcard.GiftCard;
 import com.giftshop.backend.giftcard.GiftCardService;
 
 @Service
-public class OrderService{
+public class OrderService {
 
     static final int MAX_CODE_ATTEMPTS = 5;
 
@@ -24,8 +25,10 @@ public class OrderService{
         this.codeGenerator = codeGenerator;
         this.orderRepository = orderRepository;
     }
-  /**
-     * Creates an order for the given gift card and assigns it a unique gift code.
+
+    /**
+     * Creates an order of the given gift card for the given user, and assigns it
+     * a unique gift code.
      *
      * <p>The price and name are copied from the gift card at the time of purchase,
      * so later price changes do not affect existing orders. The amount always
@@ -63,17 +66,19 @@ public class OrderService{
      * one transaction per attempt and keep the retry loop outside of it.
      *
      * @param giftCardId the id of the gift card to buy
+     * @param userId the id of the buyer, taken from the access token
      * @return the created order, including its gift code
-     * @throws GiftCardNotFoundException if no gift card exists with this id
+     * @throws com.giftshop.backend.giftcard.GiftCardNotFoundException if no gift card exists with this id
      * @throws GiftCodeGenerationException if no unique code could be generated
      *         after {@value #MAX_CODE_ATTEMPTS} attempts
      */
-    public Order create(Long giftCardId) {
+    public Order create(Long giftCardId, UUID userId) {
         GiftCard giftCard = giftCardService.getById(giftCardId);
 
         for (int attempt = 1; attempt <= MAX_CODE_ATTEMPTS; attempt++) {
             Order order = new Order(
                 UUID.randomUUID(),
+                userId,
                 giftCard.id(),
                 giftCard.name(),
                 giftCard.amount(),
@@ -88,8 +93,21 @@ public class OrderService{
         throw new GiftCodeGenerationException(MAX_CODE_ATTEMPTS);
     }
 
-    public Order getById(UUID id) {
-        return orderRepository.findById(id)
+    /**
+     * Returns an order of the given user.
+     *
+     * <p>An order that exists but belongs to another user is reported as not found
+     * (404, not 403), so that nobody can find out whether an order id exists.
+     *
+     * @throws OrderNotFoundException if the order does not exist or is not the user's
+     */
+    public Order getById(UUID id, UUID userId) {
+        return orderRepository.findByIdForUser(id, userId)
             .orElseThrow(() -> new OrderNotFoundException(id));
+    }
+
+    /** Returns the orders of the given user, newest first. */
+    public List<Order> getAllForUser(UUID userId) {
+        return orderRepository.findAllForUser(userId);
     }
 }

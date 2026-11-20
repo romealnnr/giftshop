@@ -1,11 +1,16 @@
 package com.giftshop.backend.order;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+/**
+ * Orders can only be read for a given user: there is deliberately no method
+ * that loads an order without checking who owns it.
+ */
 @Repository
 public class OrderRepository {
 
@@ -33,8 +38,14 @@ public class OrderRepository {
         }
     }
 
-    public Optional<Order> findById(UUID id) {
-        return jpaRepository.findById(id)
+    public Optional<Order> findByIdForUser(UUID id, UUID userId) {
+        return jpaRepository.findByIdAndUserId(id, userId)
             .map(OrderEntity::toOrder);
+    }
+
+    public List<Order> findAllForUser(UUID userId) {
+        return jpaRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+            .map(OrderEntity::toOrder)
+            .toList();
     }
 }
