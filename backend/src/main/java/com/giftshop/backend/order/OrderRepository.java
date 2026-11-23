@@ -1,5 +1,6 @@
 package com.giftshop.backend.order;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -8,8 +9,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 /**
- * Orders can only be read for a given user: there is deliberately no method
- * that loads an order without checking who owns it.
+ * Orders are read either for their owner, or by their gift code.
+ * There is deliberately no method that loads an order by id without its owner.
  */
 @Repository
 public class OrderRepository {
@@ -47,5 +48,23 @@ public class OrderRepository {
         return jpaRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
             .map(OrderEntity::toOrder)
             .toList();
+    }
+
+    /**
+     * Finds a gift card by its code. The code is a bearer secret: whoever knows it
+     * may use the card, which is why no owner check is done here.
+     */
+    public Optional<Order> findByGiftCode(String code) {
+        return jpaRepository.findByCode(code).map(OrderEntity::toOrder);
+    }
+
+    /**
+     * Debits the balance only if it is high enough, in a single atomic statement.
+     * Must be called inside a transaction.
+     *
+     * @return true if debited, false if the balance was too low
+     */
+    public boolean debitBalance(UUID orderId, BigDecimal amount) {
+        return jpaRepository.debitBalance(orderId, amount) == 1;
     }
 }

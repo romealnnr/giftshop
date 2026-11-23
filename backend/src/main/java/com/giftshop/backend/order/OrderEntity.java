@@ -28,6 +28,9 @@ class OrderEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal balance;
+
     @Column(nullable = false, unique = true, length = 30)
     private String code;
 
@@ -45,12 +48,13 @@ class OrderEntity {
         entity.giftCardId = order.giftCardId();
         entity.giftCardName = order.giftCardName();
         entity.amount = order.amount();
+        entity.balance = order.balance();
         entity.code = order.code();
         entity.createdAt = order.createdAt();
         return entity;
     }
 
     Order toOrder() {
-        return new Order(id, userId, giftCardId, giftCardName, amount, code, createdAt);
+        return new Order(id, userId, giftCardId, giftCardName, amount, balance, code, createdAt);
     }
 }
