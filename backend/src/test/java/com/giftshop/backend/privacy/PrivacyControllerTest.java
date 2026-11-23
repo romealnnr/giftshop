@@ -58,7 +58,7 @@ class PrivacyControllerTest {
     @Test
     void exportData_returnsTheUsersDataAsDownloadableFile() throws Exception {
         when(privacyService.exportData(alice.id()))
-            .thenReturn(new UserDataExport(Instant.now(), alice, List.of()));
+            .thenReturn(new UserDataExport(Instant.now(), alice, List.of(), List.of()));
 
         mockMvc.perform(get("/api/me/data").with(asAlice()))
             .andExpect(status().isOk())

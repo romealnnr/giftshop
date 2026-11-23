@@ -2,6 +2,7 @@ package com.giftshop.backend.redemption;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -25,6 +26,20 @@ public class RedemptionService {
         this.orderRepository = orderRepository;
         this.redemptionRepository = redemptionRepository;
         this.userService = userService;
+    }
+
+    /**
+     * Returns what remains to be spent on a gift card.
+     *
+     * @throws com.giftshop.backend.user.InactiveAccountException if the account was deleted or disabled
+     * @throws InvalidGiftCodeException if no gift card has this code
+     */
+    public GiftCodeBalance getBalance(String code, UUID userId) {
+        userService.requireActiveUser(userId);
+
+        Order card = orderRepository.findByGiftCode(normalizeCode(code))
+            .orElseThrow(InvalidGiftCodeException::new);
+        return new GiftCodeBalance(card.giftCardName(), card.amount(), card.balance());
     }
 
     /**
@@ -68,6 +83,11 @@ public class RedemptionService {
             .orElseThrow()
             .balance();
         return new RedemptionResult(amount, remainingBalance);
+    }
+
+    /** The redemptions made by the given user, newest first. */
+    public List<Redemption> getAllForUser(UUID userId) {
+        return redemptionRepository.findAllForUser(userId);
     }
 
     /** Codes are typed by people: ignore surrounding spaces and lowercase letters. */

@@ -7,24 +7,32 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
+import com.giftshop.backend.auth.AccountDisabledException;
+import com.giftshop.backend.auth.InvalidCredentialsException;
 import com.giftshop.backend.giftcard.GiftCardNotFoundException;
 import com.giftshop.backend.order.GiftCodeGenerationException;
 import com.giftshop.backend.order.OrderNotFoundException;
-import com.giftshop.backend.user.EmailAlreadyExistsException;
+import com.giftshop.backend.redemption.InsufficientBalanceException;
+import com.giftshop.backend.redemption.InvalidGiftCodeException;import com.giftshop.backend.user.EmailAlreadyExistsException;
 import com.giftshop.backend.user.InvalidPasswordException;
 import com.giftshop.backend.auth.AccountDisabledException;
 import com.giftshop.backend.auth.InvalidCredentialsException;
-import com.giftshop.backend.user.UserNotFoundException;
+
 import com.giftshop.backend.user.InactiveAccountException;
 import com.giftshop.backend.user.IncorrectPasswordException;
-
-
-@RestControllerAdvice
+import com.giftshop.backend.redemption.InsufficientBalanceException;
+import com.giftshop.backend.redemption.InvalidGiftCodeException;
+import com.giftshop.backend.user.InvalidPasswordException;
+import com.giftshop.backend.user.UserNotFoundException;
+/**
+ * Turns business exceptions into HTTP responses (RFC 9457 problem details).
+ * Standard Spring MVC errors (validation, malformed JSON, unknown route...)
+ * are handled by {@link ResponseEntityExceptionHandler}.
+ */@RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
+ // ---------- gift cards and orders ----------
     @ExceptionHandler(GiftCardNotFoundException.class)
     public ProblemDetail handleNotFound(GiftCardNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
@@ -84,5 +92,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IncorrectPasswordException.class)
     public ProblemDetail handleIncorrectPassword(IncorrectPasswordException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidGiftCodeException.class)
+    public ProblemDetail handleInvalidGiftCode(InvalidGiftCodeException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ProblemDetail handleInsufficientBalance(InsufficientBalanceException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 }

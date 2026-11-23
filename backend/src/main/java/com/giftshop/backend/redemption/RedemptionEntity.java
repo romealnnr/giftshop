@@ -41,4 +41,8 @@ class RedemptionEntity {
         entity.createdAt = redemption.createdAt();
         return entity;
     }
+
+    Redemption toRedemption() {
+        return new Redemption(id, orderId, userId, amount, createdAt);
+    }
 }

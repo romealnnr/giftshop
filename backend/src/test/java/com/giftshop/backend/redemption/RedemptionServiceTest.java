@@ -92,4 +92,23 @@ class RedemptionServiceTest {
 
         verify(redemptionRepository, never()).save(any());
     }
+
+    @Test
+    void getBalance_returnsTheCardBalance() {
+        when(orderRepository.findByGiftCode(CODE)).thenReturn(Optional.of(cardWithBalance("30.00")));
+
+        GiftCodeBalance balance = redemptionService.getBalance(CODE, userId);
+
+        assertThat(balance.giftCardName()).isEqualTo("Carte Restaurant");
+        assertThat(balance.amount()).isEqualByComparingTo("50.00");
+        assertThat(balance.balance()).isEqualByComparingTo("30.00");
+    }
+
+    @Test
+    void getBalance_rejectsUnknownCode() {
+        when(orderRepository.findByGiftCode(CODE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> redemptionService.getBalance(CODE, userId))
+            .isInstanceOf(InvalidGiftCodeException.class);
+    }
 }

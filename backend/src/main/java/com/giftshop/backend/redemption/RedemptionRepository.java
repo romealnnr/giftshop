@@ -1,5 +1,8 @@
 package com.giftshop.backend.redemption;
 
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.stereotype.Repository;
 
 /** The ledger is append-only: redemptions are recorded, never updated nor deleted. */
@@ -14,5 +17,12 @@ public class RedemptionRepository {
 
     public void save(Redemption redemption) {
         jpaRepository.save(RedemptionEntity.from(redemption));
+    }
+
+    /** The redemptions made by the given user, newest first. */
+    public List<Redemption> findAllForUser(UUID userId) {
+        return jpaRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+            .map(RedemptionEntity::toRedemption)
+            .toList();
     }
 }
