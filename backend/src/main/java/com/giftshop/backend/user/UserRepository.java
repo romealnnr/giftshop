@@ -15,7 +15,7 @@ public class UserRepository {
         this.jpaRepository = jpaRepository;
     }
 
-       /**
+    /**
      * Saves a new user.
      * Uniqueness of the email is enforced by the database UNIQUE constraint.
      * The email must already be normalized (trimmed and lowercase).
@@ -39,5 +39,17 @@ public class UserRepository {
 
     public Optional<UserCredentials> findCredentialsByEmail(String email) {
         return jpaRepository.findByEmail(email).map(UserEntity::toCredentials);
+    }
+
+    public Optional<UserCredentials> findCredentialsById(UUID id) {
+        return jpaRepository.findById(id).map(UserEntity::toCredentials);
+    }
+
+    /**
+     * Deletes the user. Their orders are kept for accounting but anonymized
+     * by the database itself (orders.user_id ... ON DELETE SET NULL).
+     */
+    public void deleteById(UUID id) {
+        jpaRepository.deleteById(id);
     }
 }

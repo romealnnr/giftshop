@@ -75,3 +75,60 @@ Authorization: Bearer {{loginBob.response.body.$.accessToken}}
 ### Bob's orders (expected: empty list)
 GET {{baseUrl}}/api/orders
 Authorization: Bearer {{loginBob.response.body.$.accessToken}}
+
+### Export my data (GDPR)
+GET {{baseUrl}}/api/me/data
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+DELETE /api/me
+Authorization: Bearer eyJ...
+Content-Type: application/json
+
+{"password": "correct-horse-battery"}
+# ---------- GDPR: account deletion (throwaway account) ----------
+
+### Register Carol
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "carol@example.com",
+  "password": "carol-long-password"
+}
+
+### Log in as Carol
+# @name loginCarol
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "carol@example.com",
+  "password": "carol-long-password"
+}
+
+### Carol buys a gift card
+POST {{baseUrl}}/api/orders
+Authorization: Bearer {{loginCarol.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "giftCardId": 3
+}
+
+### Delete Carol's account with a wrong password (expected: 403)
+DELETE {{baseUrl}}/api/me
+Authorization: Bearer {{loginCarol.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "password": "wrong-password-123"
+}
+
+### Delete Carol's account (expected: 204)
+DELETE {{baseUrl}}/api/me
+Authorization: Bearer {{loginCarol.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "password": "carol-long-password"
+}

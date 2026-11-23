@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.giftshop.backend.giftcard.GiftCard;
 import com.giftshop.backend.giftcard.GiftCardService;
+import com.giftshop.backend.user.UserService;
 
 @Service
 public class OrderService {
@@ -17,18 +18,24 @@ public class OrderService {
     private final GiftCardService giftCardService;
     private final GiftCodeGenerator codeGenerator;
     private final OrderRepository orderRepository;
+    private final UserService userService;
 
     public OrderService(GiftCardService giftCardService,
                         GiftCodeGenerator codeGenerator,
-                        OrderRepository orderRepository) {
+                        OrderRepository orderRepository,
+                        UserService userService) {
         this.giftCardService = giftCardService;
         this.codeGenerator = codeGenerator;
         this.orderRepository = orderRepository;
+        this.userService = userService;
     }
 
     /**
      * Creates an order of the given gift card for the given user, and assigns it
      * a unique gift code.
+     *
+     * <p>The buyer's account is checked first: an access token stays valid for a
+     * few minutes after the account is deleted or disabled.
      *
      * <p>The price and name are copied from the gift card at the time of purchase,
      * so later price changes do not affect existing orders. The amount always
@@ -68,11 +75,14 @@ public class OrderService {
      * @param giftCardId the id of the gift card to buy
      * @param userId the id of the buyer, taken from the access token
      * @return the created order, including its gift code
+     * @throws com.giftshop.backend.user.InactiveAccountException if the buyer's account
+     *         was deleted or disabled
      * @throws com.giftshop.backend.giftcard.GiftCardNotFoundException if no gift card exists with this id
      * @throws GiftCodeGenerationException if no unique code could be generated
      *         after {@value #MAX_CODE_ATTEMPTS} attempts
      */
     public Order create(Long giftCardId, UUID userId) {
+        userService.requireActiveUser(userId);
         GiftCard giftCard = giftCardService.getById(giftCardId);
 
         for (int attempt = 1; attempt <= MAX_CODE_ATTEMPTS; attempt++) {
