@@ -1,6 +1,7 @@
 package com.giftshop.backend.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,6 +10,10 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +36,12 @@ class UserServiceTest {
 
     @InjectMocks
     private UserService userService;
+
+    private User user(boolean enabled) {
+        return new User(UUID.randomUUID(), "alice@example.com", Role.USER, enabled, Instant.now());
+    }
+
+    // ---------- register ----------
 
     @Test
     void register_storesHashedPassword_neverTheRawPassword() {
@@ -82,5 +93,61 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.register("alice@example.com", PASSWORD))
             .isInstanceOf(EmailAlreadyExistsException.class);
+    }
+
+    // ---------- requireActiveUser ----------
+
+    @Test
+    void requireActiveUser_acceptsEnabledUser() {
+        User alice = user(true);
+        when(userRepository.findById(alice.id())).thenReturn(Optional.of(alice));
+
+        assertThatCode(() -> userService.requireActiveUser(alice.id()))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireActiveUser_rejectsDeletedUser() {
+        UUID deletedUserId = UUID.randomUUID();
+        when(userRepository.findById(deletedUserId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.requireActiveUser(deletedUserId))
+            .isInstanceOf(InactiveAccountException.class);
+    }
+
+    @Test
+    void requireActiveUser_rejectsDisabledUser() {
+        User disabled = user(false);
+        when(userRepository.findById(disabled.id())).thenReturn(Optional.of(disabled));
+
+        assertThatThrownBy(() -> userService.requireActiveUser(disabled.id()))
+            .isInstanceOf(InactiveAccountException.class);
+    }
+
+    // ---------- deleteAccount ----------
+
+    @Test
+    void deleteAccount_deletesUser_whenPasswordIsCorrect() {
+        User alice = user(true);
+        when(userRepository.findCredentialsById(alice.id()))
+            .thenReturn(Optional.of(new UserCredentials(alice, "stored-hash")));
+        when(passwordEncoder.matches(PASSWORD, "stored-hash")).thenReturn(true);
+
+        userService.deleteAccount(alice.id(), PASSWORD);
+
+        verify(userRepository).deleteById(alice.id());
+    }
+
+    @Test
+    void deleteAccount_keepsUser_whenPasswordIsWrong() {
+        User alice = user(true);
+        when(userRepository.findCredentialsById(alice.id()))
+            .thenReturn(Optional.of(new UserCredentials(alice, "stored-hash")));
+        when(passwordEncoder.matches("wrong-password-123", "stored-hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.deleteAccount(alice.id(), "wrong-password-123"))
+            .isInstanceOf(IncorrectPasswordException.class);
+
+        verify(userRepository, never()).deleteById(any());
     }
 }

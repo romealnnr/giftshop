@@ -3,6 +3,7 @@ package com.giftshop.backend.order;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,6 +22,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.giftshop.backend.giftcard.GiftCard;
 import com.giftshop.backend.giftcard.GiftCardNotFoundException;
 import com.giftshop.backend.giftcard.GiftCardService;
+import com.giftshop.backend.user.InactiveAccountException;
+import com.giftshop.backend.user.UserService;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -33,6 +36,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private UserService userService;
 
     @InjectMocks
     private OrderService orderService;
@@ -57,6 +63,16 @@ class OrderServiceTest {
         assertThat(order.amount()).isEqualByComparingTo("30.00");
         assertThat(order.code()).isEqualTo("GIFT-AAAA-BBBB-CCCC");
         assertThat(order.createdAt()).isNotNull();
+    }
+
+    @Test
+    void create_isRefused_whenBuyerIsNoLongerActive() {
+        doThrow(new InactiveAccountException()).when(userService).requireActiveUser(buyerId);
+
+        assertThatThrownBy(() -> orderService.create(2L, buyerId))
+            .isInstanceOf(InactiveAccountException.class);
+
+        verify(orderRepository, never()).saveIfCodeIsUnique(any());
     }
 
     @Test

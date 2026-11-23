@@ -16,6 +16,8 @@ import com.giftshop.backend.user.InvalidPasswordException;
 import com.giftshop.backend.auth.AccountDisabledException;
 import com.giftshop.backend.auth.InvalidCredentialsException;
 import com.giftshop.backend.user.UserNotFoundException;
+import com.giftshop.backend.user.InactiveAccountException;
+import com.giftshop.backend.user.IncorrectPasswordException;
 
 
 @RestControllerAdvice
@@ -72,5 +74,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(UserNotFoundException.class)
     public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+        @ExceptionHandler(InactiveAccountException.class)
+    public ProblemDetail handleInactiveAccount(InactiveAccountException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(IncorrectPasswordException.class)
+    public ProblemDetail handleIncorrectPassword(IncorrectPasswordException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 }
