@@ -1,10 +1,15 @@
 package com.giftshop.backend.auth;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -20,7 +25,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.giftshop.backend.security.AccessToken;
+import com.giftshop.backend.security.RateLimiter;
 import com.giftshop.backend.security.SecurityConfig;
+import com.giftshop.backend.security.TooManyRequestsException;
 import com.giftshop.backend.user.EmailAlreadyExistsException;
 import com.giftshop.backend.user.InvalidPasswordException;
 import com.giftshop.backend.user.Role;
@@ -39,6 +46,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthenticationService authenticationService;
+
+    @MockitoBean
+    private RateLimiter rateLimiter;
 
     private static final String VALID_BODY = """
         {"email": "alice@example.com", "password": "correct-horse-battery"}
@@ -156,6 +166,20 @@ class AuthControllerTest {
                     {"email": "alice@example.com"}
                     """))
             .andExpect(status().isBadRequest());
+
+        verify(authenticationService, never()).login(anyString(), anyString());
+    }
+
+    @Test
+    void login_returns429_andDoesNotCheckThePassword_whenTooManyAttempts() throws Exception {
+        doThrow(new TooManyRequestsException(42))
+            .when(rateLimiter).check(eq("login"), anyString(), anyInt(), any());
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
+            .andExpect(status().isTooManyRequests())
+            .andExpect(header().string("Retry-After", "42"));
 
         verify(authenticationService, never()).login(anyString(), anyString());
     }

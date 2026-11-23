@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.giftshop.backend.user.UserService;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import com.giftshop.backend.security.SecurityConfig;
@@ -36,6 +37,9 @@ class PrivacyControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private UserService userService;
 
     @MockitoBean
     private PrivacyService privacyService;

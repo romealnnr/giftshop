@@ -1,11 +1,15 @@
 package com.giftshop.backend.redemption;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,9 +23,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.giftshop.backend.user.UserService;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import com.giftshop.backend.security.RateLimiter;
 import com.giftshop.backend.security.SecurityConfig;
+import com.giftshop.backend.security.TooManyRequestsException;
 
 @WebMvcTest(GiftCodeController.class)
 @Import(SecurityConfig.class)
@@ -31,7 +38,13 @@ class GiftCodeControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private UserService userService;
+
+    @MockitoBean
     private RedemptionService redemptionService;
+
+    @MockitoBean
+    private RateLimiter rateLimiter;
 
     private final UUID userId = UUID.randomUUID();
 
@@ -73,6 +86,23 @@ class GiftCodeControllerTest {
             .andExpect(jsonPath("$.giftCardName").value("Carte Restaurant"))
             .andExpect(jsonPath("$.balance").value(30.0))
             .andExpect(jsonPath("$.code").doesNotExist());
+    }
+
+    @Test
+    void balance_returns429_whenTooManyAttempts() throws Exception {
+        doThrow(new TooManyRequestsException(30))
+            .when(rateLimiter).check(eq("gift-code"), eq(userId.toString()), anyInt(), any());
+
+        mockMvc.perform(post("/api/gift-codes/balance")
+                .with(user())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"code": "GIFT-AAAA-BBBB-CCCC"}
+                    """))
+            .andExpect(status().isTooManyRequests())
+            .andExpect(header().string("Retry-After", "30"));
+
+        verify(redemptionService, never()).getBalance(any(), any());
     }
 
     // ---------- redeem ----------

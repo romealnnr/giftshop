@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.JwtException;
 
 import com.giftshop.backend.user.Role;
@@ -36,7 +37,7 @@ class TokenServiceTest {
     void setUp() throws Exception {
         keyPair = newKeyPair();
         tokenService = new TokenService(jwtConfig.jwtEncoder(keyPair), properties);
-        decoder = jwtConfig.jwtDecoder(keyPair, properties);
+        decoder = jwtConfig.jwtDecoder(keyPair, properties, jwt -> OAuth2TokenValidatorResult.success());
     }
 
     private static KeyPair newKeyPair() throws Exception {

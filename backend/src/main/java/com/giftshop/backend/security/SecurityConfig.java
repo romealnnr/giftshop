@@ -13,7 +13,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@Import(JwtConfig.class)
+@Import({JwtConfig.class, ActiveUserTokenValidator.class})
 public class SecurityConfig {
 
     @Bean
