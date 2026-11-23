@@ -75,3 +75,7 @@ Authorization: Bearer {{loginBob.response.body.$.accessToken}}
 ### Bob's orders (expected: empty list)
 GET {{baseUrl}}/api/orders
 Authorization: Bearer {{loginBob.response.body.$.accessToken}}
+
+### Export my data (GDPR)
+GET {{baseUrl}}/api/me/data
+Authorization: Bearer {{login.response.body.$.accessToken}}
