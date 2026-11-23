@@ -15,6 +15,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.converter.RsaKeyConverters;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
@@ -60,12 +63,20 @@ public class JwtConfig {
         return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(key)));
     }
 
+    /**
+     * Verifies, in this order: the signature, then the expiry and the issuer,
+     * then that the account is still active.
+     */
     @Bean
-    JwtDecoder jwtDecoder(KeyPair jwtKeyPair, JwtProperties properties) {
+    JwtDecoder jwtDecoder(KeyPair jwtKeyPair,
+                          JwtProperties properties,
+                          OAuth2TokenValidator<Jwt> activeUserTokenValidator) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
             .withPublicKey((RSAPublicKey) jwtKeyPair.getPublic())
             .build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(properties.issuer()));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+            JwtValidators.createDefaultWithIssuer(properties.issuer()),
+            activeUserTokenValidator));
         return decoder;
     }
 }

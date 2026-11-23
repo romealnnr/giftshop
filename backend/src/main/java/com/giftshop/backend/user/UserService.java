@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -52,6 +54,20 @@ public class UserService {
     }
 
     /**
+     * Tells whether the user still exists and is enabled.
+     *
+     * <p>Called for every authenticated request (see ActiveUserTokenValidator), so the
+     * answer is cached in Redis. Any change that makes a user inactive must evict the
+     * entry: {@link #deleteAccount} does, and a future "disable account" feature must too.
+     */
+    @Cacheable(cacheNames = "activeUsers", key = "#id")
+    public boolean isActive(UUID id) {
+        return userRepository.findById(id)
+            .map(User::enabled)
+            .orElse(false);
+    }
+
+    /**
      * Checks that the user still exists and is enabled.
      *
      * <p>An access token stays valid until it expires, even if the account is
@@ -72,11 +88,13 @@ public class UserService {
      * Deletes the account (GDPR right to erasure).
      *
      * <p>The password is asked again, so that a stolen access token alone is not
-     * enough to delete an account.
+     * enough to delete an account. The cached "active" status is evicted, so that
+     * the user's tokens are rejected immediately on every route.
      *
      * @throws IncorrectPasswordException if the password is wrong
      * @throws UserNotFoundException if the account no longer exists
      */
+    @CacheEvict(cacheNames = "activeUsers", key = "#id")
     public void deleteAccount(UUID id, String rawPassword) {
         UserCredentials credentials = userRepository.findCredentialsById(id)
             .orElseThrow(UserNotFoundException::new);
