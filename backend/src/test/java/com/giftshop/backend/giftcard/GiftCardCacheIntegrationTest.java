@@ -30,7 +30,7 @@ class GiftCardCacheIntegrationTest {
         assertThat(cacheManager).isInstanceOf(RedisCacheManager.class);
 
         Cache cache = cacheManager.getCache("giftCards");
-        cache.clear();
+        cache.invalidate();
 
         List<GiftCard> fromDatabase = giftCardService.getAll();
 
