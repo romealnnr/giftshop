@@ -12,6 +12,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import com.giftshop.backend.auth.AccountDisabledException;
 import com.giftshop.backend.auth.InvalidCredentialsException;
+import com.giftshop.backend.auth.InvalidRefreshTokenException;
 import com.giftshop.backend.giftcard.GiftCardNotFoundException;
 import com.giftshop.backend.order.GiftCodeGenerationException;
 import com.giftshop.backend.order.OrderNotFoundException;
@@ -101,6 +102,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IncorrectPasswordException.class)
     public ProblemDetail handleIncorrectPassword(IncorrectPasswordException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ProblemDetail handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     // ---------- rate limiting ----------

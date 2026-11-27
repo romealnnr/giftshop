@@ -1,5 +1,7 @@
 package com.giftshop.backend.auth;
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +36,8 @@ import com.giftshop.backend.user.InvalidPasswordException;
 import com.giftshop.backend.user.Role;
 import com.giftshop.backend.user.User;
 import com.giftshop.backend.user.UserService;
+
+import jakarta.servlet.http.Cookie;
 
 @WebMvcTest(AuthController.class)
 @Import(SecurityConfig.class)
@@ -53,6 +58,12 @@ class AuthControllerTest {
     private static final String VALID_BODY = """
         {"email": "alice@example.com", "password": "correct-horse-battery"}
         """;
+
+    private static final AccessToken ACCESS_TOKEN = new AccessToken("signed-token", 900);
+
+    private static Cookie refreshCookie(String value) {
+        return new Cookie(AuthController.REFRESH_COOKIE, value);
+    }
 
     // ---------- register ----------
 
@@ -133,9 +144,9 @@ class AuthControllerTest {
     // ---------- login ----------
 
     @Test
-    void login_returns200WithBearerToken() throws Exception {
+    void login_returnsTheAccessToken_andSetsASecureRefreshCookie() throws Exception {
         when(authenticationService.login("alice@example.com", "correct-horse-battery"))
-            .thenReturn(new AccessToken("signed-token", 900));
+            .thenReturn(new LoginResult(ACCESS_TOKEN, "refresh-token"));
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -143,7 +154,14 @@ class AuthControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").value("signed-token"))
             .andExpect(jsonPath("$.tokenType").value("Bearer"))
-            .andExpect(jsonPath("$.expiresIn").value(900));
+            .andExpect(jsonPath("$.expiresIn").value(900))
+            .andExpect(jsonPath("$.refreshToken").doesNotExist())
+            .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
+                containsString("giftshop_refresh=refresh-token"),
+                containsString("HttpOnly"),
+                containsString("Secure"),
+                containsString("SameSite=Strict"),
+                containsString("Path=/api/auth"))));
     }
 
     @Test
@@ -182,5 +200,38 @@ class AuthControllerTest {
             .andExpect(header().string("Retry-After", "42"));
 
         verify(authenticationService, never()).login(anyString(), anyString());
+    }
+
+    // ---------- refresh and logout ----------
+
+    @Test
+    void refresh_returnsANewAccessToken_andRotatesTheCookie() throws Exception {
+        when(authenticationService.refresh("old-refresh-token"))
+            .thenReturn(new LoginResult(ACCESS_TOKEN, "new-refresh-token"));
+
+        mockMvc.perform(post("/api/auth/refresh").cookie(refreshCookie("old-refresh-token")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").value("signed-token"))
+            .andExpect(header().string(HttpHeaders.SET_COOKIE,
+                containsString("giftshop_refresh=new-refresh-token")));
+    }
+
+    @Test
+    void refresh_returns401_withoutCookie() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh"))
+            .andExpect(status().isUnauthorized());
+
+        verify(authenticationService, never()).refresh(anyString());
+    }
+
+    @Test
+    void logout_revokesTheSession_andClearsTheCookie() throws Exception {
+        mockMvc.perform(post("/api/auth/logout").cookie(refreshCookie("refresh-token")))
+            .andExpect(status().isNoContent())
+            .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(
+                containsString("giftshop_refresh="),
+                containsString("Max-Age=0"))));
+
+        verify(authenticationService).logout("refresh-token");
     }
 }
