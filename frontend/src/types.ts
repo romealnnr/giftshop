@@ -21,3 +21,15 @@ export interface TokenResponse {
   tokenType: string
   expiresIn: number
 }
+
+/** A purchased gift card, as returned by /api/orders. */
+export interface Order {
+  id: string
+  userId: string
+  giftCardId: number
+  giftCardName: string
+  amount: number
+  balance: number
+  code: string
+  createdAt: string
+}

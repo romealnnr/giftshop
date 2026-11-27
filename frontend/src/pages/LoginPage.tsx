@@ -1,10 +1,24 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/useAuth'
+
+/**
+ * Only internal paths are accepted ("/my-cards"), never "//evil.example" or
+ * "https://...": otherwise the login page could become an open redirect.
+ */
+function safeRedirect(from: unknown): string {
+  if (typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')) {
+    return from
+  }
+  return '/'
+}
 
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const redirectTo = safeRedirect((location.state as { from?: unknown } | null)?.from)
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +30,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(email, password)
-      navigate('/')
+      navigate(redirectTo, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unexpected error')
     } finally {
