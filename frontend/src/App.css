@@ -155,3 +155,86 @@
   color: inherit;
   border: 1px solid #b8b8c8;
 }
+
+/* ---------- my cards ---------- */
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #ecfdf3;
+  color: #05603a;
+}
+
+.my-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.my-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border: 1px solid #d9d9e3;
+  border-radius: 12px;
+}
+
+.my-card--new {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px #e0e7ff;
+}
+
+.my-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.my-card__header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.my-card__badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.my-card__balance {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.my-card__balance span {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #6b6b80;
+}
+
+.my-card__code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.my-card__code code {
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+
+.my-card__date {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b6b80;
+}

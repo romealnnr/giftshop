@@ -21,6 +21,7 @@ export function Header() {
         </NavLink>
         {status === 'authenticated' && user && (
           <>
+            <NavLink to="/my-cards">Mes cartes</NavLink>
             <span className="header__user">{user.email}</span>
             <button type="button" className="button button--secondary" onClick={handleLogout}>
               Se déconnecter
