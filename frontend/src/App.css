@@ -238,3 +238,30 @@
   font-size: 0.85rem;
   color: #6b6b80;
 }
+
+/* ---------- redeem ---------- */
+
+.balance-summary {
+  padding: 1rem 1.25rem;
+  border: 1px solid #d9d9e3;
+  border-radius: 12px;
+}
+
+.balance-summary p {
+  margin: 0;
+}
+
+.balance-summary__name {
+  font-weight: 600;
+}
+
+.balance-summary__balance {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.balance-summary__balance span {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #6b6b80;
+}

@@ -33,3 +33,16 @@ export interface Order {
   code: string
   createdAt: string
 }
+
+/** Returned by POST /api/gift-codes/balance. */
+export interface GiftCodeBalance {
+  giftCardName: string
+  amount: number
+  balance: number
+}
+
+/** Returned by POST /api/gift-codes/redeem. */
+export interface RedemptionResult {
+  redeemedAmount: number
+  remainingBalance: number
+}
