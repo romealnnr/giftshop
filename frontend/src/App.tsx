@@ -6,6 +6,7 @@ import { CatalogPage } from './pages/CatalogPage'
 import { LoginPage } from './pages/LoginPage'
 import { MyCardsPage } from './pages/MyCardsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { RedeemPage } from './pages/RedeemPage'
 import { RegisterPage } from './pages/RegisterPage'
 import './App.css'
 
@@ -24,6 +25,14 @@ function App() {
               element={
                 <RequireAuth>
                   <MyCardsPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/redeem"
+              element={
+                <RequireAuth>
+                  <RedeemPage />
                 </RequireAuth>
               }
             />

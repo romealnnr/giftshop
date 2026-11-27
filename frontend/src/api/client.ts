@@ -3,10 +3,13 @@ import type { TokenResponse } from '../types'
 /** An error answered by the API, with its HTTP status and its message (RFC 9457 "detail"). */
 export class ApiError extends Error {
   readonly status: number
+  /** For 429 Too Many Requests: how many seconds to wait, from the Retry-After header. */
+  readonly retryAfterSeconds: number | null // NEW
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, retryAfterSeconds: number | null = null) {
     super(message)
     this.status = status
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -106,5 +109,11 @@ async function toApiError(response: Response): Promise<ApiError> {
   } catch {
     // The body is not JSON: keep the generic message
   }
-  return new ApiError(response.status, message)
+  return new ApiError(response.status, message, parseRetryAfter(response)) // NEW
+}
+
+/** Retry-After in seconds ("42"); the HTTP-date form is not used by our backend. */
+function parseRetryAfter(response: Response): number | null {
+  const seconds = Number(response.headers.get('Retry-After'))
+  return Number.isInteger(seconds) && seconds > 0 ? seconds : null
 }
